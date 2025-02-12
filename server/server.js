@@ -13,14 +13,16 @@ const shopOrderRouter = require("./routes/shop/order-routes");
 const shopSearchRouter = require("./routes/shop/search-routes");
 const shopReviewRouter = require("./routes/shop/review-routes");
 const Stripe = require("stripe");
-const stripe = Stripe("sk_test_51QrLBFFagJkBf2d6pGfv3MvyoVAooT50x1lvdYoSQhKm7MO7Qe8VhUFfyPGQMKizIEMCUG6GfefNBMmGykAFFIwJ00ZYFjblJ7"); // Use your secret key here
+require('dotenv').config();
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY); // Use your secret key here
 const commonFeatureRouter = require("./routes/common/feature-routes");
 
 //create a database connection -> u can also
 //create a separate file for this and then import/use that file here
 
+
 mongoose
-  .connect("mongodb://localhost:27017/epictrend")
+  .connect(process.env.MONGODB_URI)
   .then(() => console.log("MongoDB connected"))
   .catch((error) => console.log(error));
 
@@ -29,7 +31,7 @@ const PORT = process.env.PORT || 5000;
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+    origin: [process.env.CLIENT_URL, process.env.SECONDARY_CLIENT_URL],
     methods: ["GET", "POST", "DELETE", "PUT"],
     allowedHeaders: [
       "Content-Type",
