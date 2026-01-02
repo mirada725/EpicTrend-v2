@@ -7,6 +7,7 @@ const initialState = {
   orderId: null,
   orderList: [],
   orderDetails: null,
+  clientSecret: null,
 };
 
 export const createNewOrder = createAsyncThunk(
@@ -28,7 +29,7 @@ export const capturePayment = createAsyncThunk(
       "http://localhost:5000/api/shop/order/capture",
       {
         paymentId,
-        payerId,
+        payerId: payerId || "",
         orderId,
       }
     );
@@ -66,6 +67,11 @@ const shoppingOrderSlice = createSlice({
     resetOrderDetails: (state) => {
       state.orderDetails = null;
     },
+    resetPaymentState: (state) => {
+      state.approvalURL = null;
+      state.clientSecret = null;
+      state.orderId = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -75,6 +81,7 @@ const shoppingOrderSlice = createSlice({
       .addCase(createNewOrder.fulfilled, (state, action) => {
         state.isLoading = false;
         state.approvalURL = action.payload.approvalURL;
+        state.clientSecret = action.payload.clientSecret;
         state.orderId = action.payload.orderId;
         sessionStorage.setItem(
           "currentOrderId",
@@ -84,6 +91,7 @@ const shoppingOrderSlice = createSlice({
       .addCase(createNewOrder.rejected, (state) => {
         state.isLoading = false;
         state.approvalURL = null;
+        state.clientSecret = null;
         state.orderId = null;
       })
       .addCase(getAllOrdersByUserId.pending, (state) => {
@@ -111,6 +119,6 @@ const shoppingOrderSlice = createSlice({
   },
 });
 
-export const { resetOrderDetails } = shoppingOrderSlice.actions;
+export const { resetOrderDetails, resetPaymentState } = shoppingOrderSlice.actions;
 
 export default shoppingOrderSlice.reducer;
