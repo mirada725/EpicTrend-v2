@@ -75,7 +75,7 @@ function AdminOrdersView() {
                         {orderItem?.orderStatus}
                       </Badge>
                     </TableCell>
-                    <TableCell>${orderItem?.totalAmount}</TableCell>
+                    <TableCell>{orderItem?.totalAmount}LKR</TableCell>
                     <TableCell>
                       <Dialog
                         open={openDetailsDialog}

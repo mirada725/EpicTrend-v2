@@ -47,11 +47,11 @@ function ShoppingProductTile({
                 product?.salePrice > 0 ? "line-through" : ""
               } text-lg font-semibold text-primary`}
             >
-              ${product?.price}
+              {product?.price}LKR
             </span>
             {product?.salePrice > 0 ? (
               <span className="text-lg font-semibold text-primary">
-                ${product?.salePrice}
+                {product?.salePrice}LKR
               </span>
             ) : null}
           </div>
