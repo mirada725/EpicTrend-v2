@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
@@ -12,9 +13,7 @@ const shopAddressRouter = require("./routes/shop/address-routes");
 const shopOrderRouter = require("./routes/shop/order-routes");
 const shopSearchRouter = require("./routes/shop/search-routes");
 const shopReviewRouter = require("./routes/shop/review-routes");
-const Stripe = require("stripe");
-require('dotenv').config();
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY); // Use your secret key here
+
 const commonFeatureRouter = require("./routes/common/feature-routes");
 
 //create a database connection -> u can also
@@ -43,27 +42,6 @@ app.use(
     credentials: true,
   })
 );
-
-app.post("/create-payment-intent", async (req, res) => {
-  try {
-    // Get the payment amount from the frontend
-    const { amount } = req.body;
-
-    // Create a PaymentIntent with the amount
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amount, // Amount in cents (e.g., $10 = 1000 cents)
-      currency: "usd", // Currency (adjust as per your country/currency)
-      payment_method_types: ["card"], // Only card payments
-    });
-
-    // Send the client secret to the frontend
-    res.send({
-      clientSecret: paymentIntent.client_secret,
-    });
-  } catch (error) {
-    res.status(500).send({ error: error.message });
-  }
-});
 
 app.use(cookieParser());
 app.use(express.json());
