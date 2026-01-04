@@ -4,17 +4,20 @@ import { useDispatch, useSelector } from "react-redux";
 import UserCartItemsContent from "@/components/shopping-view/cart-items-content";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { createNewOrder } from "@/store/shop/order-slice";
-import { Navigate } from "react-router-dom";
+import { createNewOrder, capturePayment } from "@/store/shop/order-slice";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
+import StripeCheckout from "@/components/shopping-view/stripe-checkout";
 
 function ShoppingCheckout() {
   const { cartItems } = useSelector((state) => state.shopCart);
   const { user } = useSelector((state) => state.auth);
-  const { approvalURL } = useSelector((state) => state.shopOrder);
+  const { approvalURL, clientSecret, orderId } = useSelector((state) => state.shopOrder);
   const [currentSelectedAddress, setCurrentSelectedAddress] = useState(null);
   const [isPaymentStart, setIsPaymemntStart] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("stripe");
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   console.log(currentSelectedAddress, "cartItems");
@@ -72,7 +75,7 @@ function ShoppingCheckout() {
         notes: currentSelectedAddress?.notes,
       },
       orderStatus: "pending",
-      paymentMethod: "paypal",
+      paymentMethod: paymentMethod,
       paymentStatus: "pending",
       totalAmount: totalCartAmount,
       orderDate: new Date(),
@@ -89,6 +92,19 @@ function ShoppingCheckout() {
         setIsPaymemntStart(false);
       }
     });
+  }
+
+  async function handleStripePaymentSuccess(paymentId, orderId) {
+    const response = await dispatch(capturePayment({ paymentId, payerId: "", orderId }));
+    
+    if (response?.payload?.success) {
+      navigate("/shop/payment-success");
+    } else {
+      toast({
+        title: "Payment verification failed",
+        variant: "destructive",
+      });
+    }
   }
 
   if (approvalURL) {
@@ -114,16 +130,53 @@ function ShoppingCheckout() {
           <div className="mt-8 space-y-4">
             <div className="flex justify-between">
               <span className="font-bold">Total</span>
-              <span className="font-bold">{totalCartAmount}LKR</span>
+              <span className="font-bold">Rs. {totalCartAmount}</span>
             </div>
           </div>
-          <div className="mt-4 w-full">
-            <Button onClick={handleInitiatePaypalPayment} className="w-full">
-              {isPaymentStart
-                ? "Processing Paypal Payment..."
-                : "Checkout with Paypal"}
-            </Button>
+          
+          {/* Payment Method Selection */}
+          <div className="mt-4 space-y-2">
+            <label className="font-semibold">Select Payment Method:</label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="stripe"
+                  checked={paymentMethod === "stripe"}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                />
+                <span>Stripe</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="paypal"
+                  checked={paymentMethod === "paypal"}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                />
+                <span>PayPal</span>
+              </label>
+            </div>
           </div>
+
+          {/* Show Stripe Checkout if clientSecret is available */}
+          {clientSecret && paymentMethod === "stripe" ? (
+            <StripeCheckout
+              clientSecret={clientSecret}
+              orderId={orderId}
+              onPaymentSuccess={handleStripePaymentSuccess}
+            />
+          ) : (
+            <div className="mt-4 w-full">
+              <Button onClick={handleInitiatePaypalPayment} className="w-full">
+                {isPaymentStart
+                  ? `Processing ${paymentMethod === "stripe" ? "Stripe" : "PayPal"} Payment...`
+                  : `Checkout with ${paymentMethod === "stripe" ? "Stripe" : "PayPal"}`}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -3,6 +3,15 @@ const Order = require("../../models/Order");
 const Cart = require("../../models/Cart");
 const Product = require("../../models/Product");
 
+// Initialize Stripe lazily to ensure env variables are loaded
+let stripe;
+const getStripe = () => {
+  if (!stripe) {
+    stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+  }
+  return stripe;
+};
+
 const createOrder = async (req, res) => {
   try {
     const {
@@ -20,6 +29,44 @@ const createOrder = async (req, res) => {
       cartId,
     } = req.body;
 
+    // Handle Stripe payment
+    if (paymentMethod === "stripe") {
+      // Create Stripe payment intent
+      const stripe = getStripe();
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(totalAmount * 100), // Convert to cents
+        currency: "lkr", // Sri Lankan Rupees
+        metadata: {
+          userId: userId,
+          cartId: cartId,
+        },
+      });
+
+      const newlyCreatedOrder = new Order({
+        userId,
+        cartId,
+        cartItems,
+        addressInfo,
+        orderStatus,
+        paymentMethod: "stripe",
+        paymentStatus: "pending",
+        totalAmount,
+        orderDate,
+        orderUpdateDate,
+        paymentId: paymentIntent.id,
+        payerId: "",
+      });
+
+      await newlyCreatedOrder.save();
+
+      return res.status(201).json({
+        success: true,
+        clientSecret: paymentIntent.client_secret,
+        orderId: newlyCreatedOrder._id,
+      });
+    }
+
+    // Handle PayPal payment (existing code)
     const create_payment_json = {
       intent: "sale",
       payer: {
@@ -108,10 +155,23 @@ const capturePayment = async (req, res) => {
       });
     }
 
+    // Verify Stripe payment if it's a Stripe order
+    if (order.paymentMethod === "stripe") {
+      const stripe = getStripe();
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentId);
+
+      if (paymentIntent.status !== "succeeded") {
+        return res.status(400).json({
+          success: false,
+          message: "Payment not completed",
+        });
+      }
+    }
+
     order.paymentStatus = "paid";
     order.orderStatus = "confirmed";
     order.paymentId = paymentId;
-    order.payerId = payerId;
+    order.payerId = payerId || "";
 
     for (let item of order.cartItems) {
       let product = await Product.findById(item.productId);
